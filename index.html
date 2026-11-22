@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Decora el Árbol - Gato Dev</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      user-select: none;
+      -webkit-user-select: none; /* Safari/Chrome */
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #162436; /* Color de fondo de respaldo */
+      overflow: hidden;
+    }
+
+    .scene {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border: 3px solid #4a2e1b;
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: crosshair; /* Cursor de precisión para decorar */
+    }
+
+    /* FONDO DE NAVIDAD (tu imagen recortada) */
+    .bg-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* Cubre todo el espacio del iframe */
+      z-index: 0;
+      opacity: 1;
+    }
+
+    .hud {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 12px;
+      background: rgba(255, 250, 240, 0.85);
+      border-bottom: 2px solid #4a2e1b;
+      color: #4a2e1b;
+      font-size: 12.5px;
+      font-weight: bold;
+    }
+
+    .clear-btn {
+      background: #d62828;
+      color: #fffaf0;
+      border: 1.5px solid #4a2e1b;
+      border-radius: 7px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .clear-btn:active {
+      transform: translateY(1px);
+    }
+
+    /* ÁREA CENTRAL (donde está el árbol) */
+    .stage {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding-bottom: 50px; /* Espacio para la bandeja inferior */
+    }
+
+    /* ÁRBOL DE NAVIDAD (tu imagen recortada) */
+    .tree-img {
+      max-height: 95%;
+      max-width: 90%;
+      object-fit: contain;
+      pointer-events: none; /* Permite hacer clic a través de la imagen del árbol */
+      filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.3));
+    }
+
+    /* ESTILO DE LOS ADORNOS COLOCADOS (tus imágenes recortadas) */
+    .placed-ornament {
+      position: absolute;
+      width: 32px; /* Tamaño por defecto, ajústalo según tus sprites */
+      height: 32px;
+      object-fit: contain;
+      transform: translate(-50%, -50%);
+      pointer-events: none; /* No bloquea clics futuros */
+      filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+      transition: transform 0.15s ease-out;
+    }
+
+    /* Efecto al colocar */
+    .placed-ornament.just-placed {
+      transform: translate(-50%, -50%) scale(1.3);
+    }
+
+    /* BANDEJA INFERIOR (dock de selección) */
+    .dock {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      z-index: 2;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: rgba(255, 250, 240, 0.95);
+      border-top: 2px solid #4a2e1b;
+    }
+
+    .ornament-pick {
+      width: 44px;
+      height: 44px;
+      background: #fdf4e7;
+      border: 2.5px solid #7d4e2d;
+      border-radius: 12px;
+      padding: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .ornament-pick:hover {
+      background: #f6e0c1;
+      transform: translateY(-2px);
+    }
+
+    .ornament-pick.selected {
+      border-color: #4f9d69;
+      background: #e6f5ea;
+      transform: scale(1.1);
+      box-shadow: 0 3px 0 #4a2e1b;
+    }
+
+    .ornament-pick img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="scene">
+    <!-- CAMBIA "xmas_bg.png" POR EL NOMBRE DE TU FONDO -->
+    <img src="xmas_bg.png" alt="Fondo Navideño" class="bg-img" id="sceneBg" onerror="this.style.display='none'" />
+
+    <div class="hud">
+      <span>🎄 Adornos puestos: <strong id="countVal">0</strong></span>
+      <button type="button" class="clear-btn" id="clearBtn">🧹 Limpiar árbol</button>
+    </div>
+
+    <div class="stage" id="treeStage">
+      <!-- CAMBIA "xmas_tree.png" POR EL NOMBRE DE TU ÁRBOL -->
+      <img src="xmas_tree.png" alt="Árbol de Navidad" class="tree-img" id="treeBase" onerror="this.style.display='none'" />
+    </div>
+
+    <div class="dock" id="dock">
+      <!-- ADORNOS / REGALOS (agrega aquí tantos como quieras, con tus imágenes) -->
+      <!-- 1. ESFERA ROJA -->
+      <button type="button" class="ornament-pick selected" data-src="ornament_red.png" title="Esfera Roja">
+        <img src="ornament_red.png" alt="Esfera Roja" />
+      </button>
+      <!-- 2. ESTRELLA -->
+      <button type="button" class="ornament-pick" data-src="ornament_star.png" title="Estrella">
+        <img src="ornament_star.png" alt="Estrella" />
+      </button>
+      <!-- 3. BASTÓN -->
+      <button type="button" class="ornament-pick" data-src="ornament_candy.png" title="Bastón">
+        <img src="ornament_candy.png" alt="Bastón" />
+      </button>
+      <!-- 4. REGALO -->
+      <button type="button" class="ornament-pick" data-src="gift_red.png" title="Regalo">
+        <img src="gift_red.png" alt="Regalo" />
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const treeStage = document.getElementById("treeStage");
+    const dock = document.getElementById("dock");
+    const countVal = document.getElementById("countVal");
+    const clearBtn = document.getElementById("clearBtn");
+
+    // Define la primera imagen como seleccionada por defecto
+    let selectedSrc = "ornament_red.png";
+    let ornamentCount = 0;
+
+    // Lógica de selección en la bandeja inferior
+    dock.querySelectorAll(".ornament-pick").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation(); // Evita que el clic llegue al stage
+        dock.querySelectorAll(".ornament-pick").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        selectedSrc = btn.getAttribute("data-src");
+      });
+    });
+
+    // Lógica de colocación en el árbol
+    treeStage.addEventListener("click", (e) => {
+      // Ignora si se hizo clic en el botón "Limpiar" por error
+      if (e.target.closest('.hud')) return;
+
+      const rect = treeStage.getBoundingClientRect();
+      // Calcula la posición relativa del clic dentro del escenario
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const img = document.createElement("img");
+      img.src = selectedSrc;
+      img.alt = "Adorno";
+      img.className = "placed-ornament";
+      img.style.left = `${x}px`;
+      img.style.top = `${y}px`;
+
+      // Añade el efecto visual de colocación
+      requestAnimationFrame(() => {
+        img.classList.add("just-placed");
+        setTimeout(() => img.classList.remove("just-placed"), 150);
+      });
+
+      treeStage.appendChild(img);
+      ornamentCount += 1;
+      countVal.textContent = String(ornamentCount);
+    });
+
+    // Lógica de limpieza
+    clearBtn.addEventListener("click", (e) => {
+      e.stopPropagation(); // Evita que el clic se propague
+      const placed = treeStage.querySelectorAll(".placed-ornament");
+      placed.forEach((el) => el.remove());
+      ornamentCount = 0;
+      countVal.textContent = "0";
+    });
+  </script>
+</body>
+</html>
